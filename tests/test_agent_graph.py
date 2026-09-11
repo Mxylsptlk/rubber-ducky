@@ -105,6 +105,35 @@ class RubberDuckyAgentGraphTests(unittest.TestCase):
         )
         memory_prompt = brainstorming.calls[-1][1]["content"]
         self.assertIn("Relevant conversation memories", memory_prompt)
+        controller_prompt = controller.calls[-1][1]["content"]
+        self.assertIn("Relevant conversation memories", controller_prompt)
+
+    def test_controller_can_route_using_conversational_memory(self):
+        def controller_response(payload):
+            prompt = payload[1]["content"]
+            if (
+                "Relevant conversation memories" in prompt
+                and "Brainstorm product names." in prompt
+            ):
+                return "brainstorm"
+            return "problem_solving"
+
+        controller = FakeModel(controller_response)
+        brainstorming = FakeModel("Let us try fun brand-name options.")
+        problem_solving = FakeModel("Can you rewrite the constraint in symbols?")
+
+        graph = RubberDuckyAgentGraph(
+            model=brainstorming,
+            embeddings=FakeEmbeddings(),
+            controller_model=controller,
+            brainstorming_model=brainstorming,
+            problem_solving_model=problem_solving,
+        )
+
+        graph.invoke("Brainstorm product names.", session_id="shared")
+        result = graph.invoke("More name ideas?", session_id="shared")
+
+        self.assertEqual(result["route"], "brainstorm")
 
     def test_invocations_for_same_session_are_serialized(self):
         active_calls = 0
