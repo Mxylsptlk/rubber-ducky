@@ -38,6 +38,17 @@ result = graph.invoke(
 )
 
 print(result['response'])
+print(result['route'])
+
+# %%
+
+result = graph.invoke(
+	("My cold outreach is failing. How do I get responses?")
+)
+
+print(result['response'],'\n\n','routing: '+result['route'])
+
+# %%
 
 # %%
 
