@@ -1,4 +1,6 @@
 import unittest
+from threading import Lock, Thread
+from time import sleep
 
 from rubber_ducky.agent_graph import RubberDuckyAgentGraph
 
@@ -103,6 +105,52 @@ class RubberDuckyAgentGraphTests(unittest.TestCase):
         )
         memory_prompt = brainstorming.calls[-1][1]["content"]
         self.assertIn("Relevant conversation memories", memory_prompt)
+
+    def test_invocations_for_same_session_are_serialized(self):
+        active_calls = 0
+        max_active_calls = 0
+        active_calls_lock = Lock()
+
+        def slow_response(payload):
+            nonlocal active_calls, max_active_calls
+            with active_calls_lock:
+                active_calls += 1
+                max_active_calls = max(max_active_calls, active_calls)
+            sleep(0.05)
+            with active_calls_lock:
+                active_calls -= 1
+            if isinstance(payload, list) and payload and payload[0]["content"].startswith(
+                "You are a routing controller"
+            ):
+                return "brainstorm"
+            return "Thread-safe response."
+
+        model = FakeModel(slow_response)
+        graph = RubberDuckyAgentGraph(
+            model=model,
+            embeddings=FakeEmbeddings(),
+            controller_model=model,
+            brainstorming_model=model,
+            problem_solving_model=model,
+        )
+
+        thread_one = Thread(
+            target=graph.invoke,
+            args=("Brainstorm product names.",),
+            kwargs={"session_id": "shared"},
+        )
+        thread_two = Thread(
+            target=graph.invoke,
+            args=("Brainstorm playful ones.",),
+            kwargs={"session_id": "shared"},
+        )
+
+        thread_one.start()
+        thread_two.start()
+        thread_one.join()
+        thread_two.join()
+
+        self.assertEqual(max_active_calls, 1)
 
 
 if __name__ == "__main__":

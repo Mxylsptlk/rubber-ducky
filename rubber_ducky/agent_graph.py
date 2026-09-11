@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from math import sqrt
+from threading import Lock
 from typing import Any, Iterable, Literal, Protocol, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -66,17 +67,22 @@ class RubberDuckyAgentGraph:
         self.embeddings = embeddings
         self.memory_k = memory_k
         self._histories: dict[str, list[dict[str, str]]] = defaultdict(list)
+        self._session_locks_guard = Lock()
+        self._session_locks: dict[str, Lock] = {}
         self._memory_index: list[RubberDuckyAgentGraph.MemoryEntry] = []
         self.graph = self._build_graph()
 
     def invoke(self, user_input: str, *, session_id: str = "default") -> dict[str, Any]:
-        initial_state: RubberDuckyAgentGraph.State = {
-            "session_id": session_id,
-            "user_input": user_input,
-            "history": list(self._histories.get(session_id, [])),
-        }
-        result = self.graph.invoke(initial_state)
-        self._histories[session_id] = result["history"]
+        with self._session_locks_guard:
+            session_lock = self._session_locks.setdefault(session_id, Lock())
+        with session_lock:
+            initial_state: RubberDuckyAgentGraph.State = {
+                "session_id": session_id,
+                "user_input": user_input,
+                "history": list(self._histories.get(session_id, [])),
+            }
+            result = self.graph.invoke(initial_state)
+            self._histories[session_id] = result["history"]
         return dict(result)
 
     def _build_graph(self):
