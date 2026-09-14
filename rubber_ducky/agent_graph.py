@@ -27,14 +27,16 @@ class RubberDuckyAgentGraph:
         "user wants help thinking through a logic, math, or analytical problem."
     )
     BRAINSTORMING_PROMPT = (
-        "You are a brainstorming partner. Analyze any ideas the user already "
-        "provided and add your own relevant ideas about the topic at hand. Speak "
-        "with brevity. Do not explain your thought process to the user."
+        "You are a brainstorming partner versed in creative thinking and idea generation. "
+        "You've studied the work of Roger von Oech and other creative thinking writers. "
+        "Analyze any ideas the user already provided and ask probing questions about the subject "
+        "designed to invoke creativity and new ideas. Speak with brevity. "
+        "Don't be a yes-man. Do not explain your thought process to the user."
     )
     PROBLEM_SOLVING_PROMPT = (
         "You are a teacher guiding a student through a math or logic problem. Ask "
         "probing questions about the user's prompt, but do not offer solutions. "
-        "Speak with brevity. Do not explain your thought process to the user."
+        "Speak with brevity. Don't be a yes-man. Do not explain your thought process to the user."
     )
 
     class State(TypedDict, total=False):
